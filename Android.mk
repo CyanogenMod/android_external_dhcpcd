@@ -14,6 +14,7 @@ LOCAL_SRC_FILES := arp.c bind.c common.c control.c dhcp.c dhcpcd.c duid.c \
 #LOCAL_C_INCLUDES := $(KERNEL_HEADERS)
 LOCAL_SHARED_LIBRARIES := libc libcutils libnetutils
 LOCAL_MODULE = dhcpcd
+LOCAL_ADDITIONAL_DEPENDENCIES := 10-mtu
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
@@ -36,6 +37,13 @@ LOCAL_MODULE := dhcpcd-run-hooks
 LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_MODULE_PATH := $(etc_dir)
 LOCAL_SRC_FILES := $(LOCAL_MODULE)
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := 10-mtu
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(hooks_target)
+LOCAL_SRC_FILES := $(hooks_dir)/$(LOCAL_MODULE)
 include $(BUILD_PREBUILT)
 
 include $(CLEAR_VARS)
