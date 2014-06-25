@@ -18,6 +18,16 @@ LOCAL_SHARED_LIBRARIES := libc libcutils libnetutils
 LOCAL_MODULE = dhcpcd
 include $(BUILD_EXECUTABLE)
 
+# Shared library
+#======================================================#
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := ifaddrs.c
+LOCAL_SHARED_LIBRARIES := libnetutils
+LOCAL_MODULE:= libdhcpcd
+LOCAL_PRELINK_MODULE := false
+include $(BUILD_SHARED_LIBRARY)
+#======================================================#
+
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := showlease.c
 LOCAL_SHARED_LIBRARIES := libc
