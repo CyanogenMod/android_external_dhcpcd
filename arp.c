@@ -172,11 +172,31 @@ handle_arp_packet(void *arg)
 			return;
 		}
 
-		/* Check for conflict */
-		if (state->offer &&
-		    (reply_s == state->offer->yiaddr ||
-			(reply_s == 0 && reply_t == state->offer->yiaddr)))
-			state->fail.s_addr = state->offer->yiaddr;
+		if (state->offer) {
+			if (state->state == DHS_PROBEGW) {
+				/* Check for successful gateway probe */
+				if (ar.ar_op == htons(ARPOP_REPLY) &&
+				    reply_s == state->offer->giaddr) {
+					ina.s_addr = reply_s;
+					syslog(LOG_INFO,
+					       "%s: gateway %s found at %s",
+					       iface->name, inet_ntoa(ina),
+					       hwaddr_ntoa((unsigned char *)
+							   hw_s,
+							   (size_t)ar.ar_hln));
+					delete_timeout(NULL, iface);
+					bind_interface(iface);
+				}
+				return;
+			} else {
+				/* Check for conflict */
+				if (reply_s == state->offer->yiaddr ||
+				    (reply_s == 0 &&
+				     reply_t == state->offer->yiaddr))
+					state->fail.s_addr =
+						state->offer->yiaddr;
+			}
+		}
 
 		/* Handle IPv4LL conflicts */
 		if (IN_LINKLOCAL(htonl(iface->addr.s_addr)) &&
@@ -252,6 +272,7 @@ send_arp_probe(void *arg)
 	struct in_addr addr;
 	struct timeval tv;
 	int arping = 0;
+	in_addr_t src_addr = 0;
 
 	if (state->arping_index < state->options->arping_len) {
 		addr.s_addr = state->options->arping[state->arping_index];
@@ -261,6 +282,11 @@ send_arp_probe(void *arg)
 			addr.s_addr = state->offer->yiaddr;
 		else
 			addr.s_addr = state->offer->ciaddr;
+		if (state->state == DHS_PROBEGW) {
+			/* ARP for the gateway using our leased IP address */
+			src_addr = addr.s_addr;
+			addr.s_addr = state->offer->giaddr;
+		}
 	} else
 		addr.s_addr = iface->addr.s_addr;
 
@@ -290,6 +316,16 @@ send_arp_probe(void *arg)
 				add_timeout_tv(&tv, send_arp_probe, iface);
 			else
 				add_timeout_tv(&tv, start_interface, iface);
+		} else if (state->state == DHS_PROBEGW) {
+			/* Allow ourselves to fail only once this way */
+			syslog(LOG_ERR, "arpgw: ARP timed out");
+			state->options->options &= ~DHCPCD_ARPGW;
+			errno = ENOENT;
+			handle_arp_failure(iface);
+			return;
+		} else if ((state->options->options & DHCPCD_ARPGW) != 0 &&
+			   start_arpgw(iface) != 0) {
+			return;
 		} else
 			add_timeout_tv(&tv, bind_interface, iface);
 	}
@@ -297,9 +333,51 @@ send_arp_probe(void *arg)
 	    "%s: sending ARP probe (%d of %d), next in %0.2f seconds",
 	    iface->name, state->probes ? state->probes : PROBE_NUM, PROBE_NUM,
 	    timeval_to_double(&tv));
-	if (send_arp(iface, ARPOP_REQUEST, 0, addr.s_addr) == -1)
+	if (send_arp(iface, ARPOP_REQUEST, src_addr, addr.s_addr) == -1)
 		syslog(LOG_ERR, "send_arp: %m");
 }
+
+int
+start_arpself(struct interface *iface)
+{
+	struct if_state *state = iface->state;
+	struct in_addr addr;
+
+	if (iface->addr.s_addr != state->offer->yiaddr) {
+		/* If the interface already has the address configured
+		 * then we can't ARP for duplicate detection. */
+		addr.s_addr = state->offer->yiaddr;
+		if (has_address(iface->name, &addr, NULL) != 1) {
+			state->claims = 0;
+			state->probes = 0;
+			state->conflicts = 0;
+			state->state = DHS_PROBE;
+			send_arp_probe(iface);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int
+start_arpgw(struct interface *iface)
+{
+	struct if_state *state = iface->state;
+	struct in_addr ina;
+
+	if (get_option_addr(&ina, state->offer, DHO_ROUTER))
+		return 0;
+
+	/* Abuse the "giaddr" struct entry to store the first router
+	 * IP address */
+	state->offer->giaddr = ina.s_addr;
+	state->probes = 0;
+	state->state = DHS_PROBEGW;
+	send_arp_probe(iface);
+	return 1;
+}
+
 
 void
 start_arping(struct interface *iface)

@@ -1121,21 +1121,27 @@ write_lease(const struct interface *iface, const struct dhcp_message *dhcp)
 	uint8_t l;
 	uint8_t o = 0;
 
+	char leasefile[PATH_MAX];
+	if(iface->wireless)
+		snprintf(leasefile, PATH_MAX, "%s.%s", iface->leasefile, iface->ssid);
+	else
+		snprintf(leasefile, PATH_MAX, "%s.nowifi", iface->leasefile);
+
 	/* We don't write BOOTP leases */
 	if (is_bootp(dhcp)) {
-		unlink(iface->leasefile);
+		unlink(leasefile);
 		return 0;
 	}
 
 	syslog(LOG_DEBUG, "%s: writing lease `%s'",
-	    iface->name, iface->leasefile);
+	    iface->name, leasefile);
 
-	fd = open(iface->leasefile, O_WRONLY | O_CREAT | O_TRUNC, 0444);
+	fd = open(leasefile, O_WRONLY | O_CREAT | O_TRUNC, 0444);
 #ifdef ANDROID
 	if (fd == -1 && errno == EACCES) {
 		/* the lease file might have been created when dhcpcd was running as root */
-		unlink(iface->leasefile);
-		fd = open(iface->leasefile, O_WRONLY | O_CREAT | O_TRUNC, 0444);
+		unlink(leasefile);
+		fd = open(leasefile, O_WRONLY | O_CREAT | O_TRUNC, 0444);
 	}
 #endif
 	if (fd == -1) {
@@ -1168,15 +1174,20 @@ read_lease(const struct interface *iface)
 	struct dhcp_message *dhcp;
 	ssize_t bytes;
 
-	fd = open(iface->leasefile, O_RDONLY);
+	char leasefile[PATH_MAX];
+	if(iface->wireless)
+		snprintf(leasefile, PATH_MAX, "%s.%s", iface->leasefile, iface->ssid);
+	else
+		snprintf(leasefile, PATH_MAX, "%s.nowifi", iface->leasefile);
+	fd = open(leasefile, O_RDONLY);
 	if (fd == -1) {
 		if (errno != ENOENT)
 			syslog(LOG_ERR, "%s: open `%s': %m",
-			    iface->name, iface->leasefile);
+			    iface->name, leasefile);
 		return NULL;
 	}
 	syslog(LOG_DEBUG, "%s: reading lease `%s'",
-	    iface->name, iface->leasefile);
+	    iface->name, leasefile);
 	dhcp = xmalloc(sizeof(*dhcp));
 	memset(dhcp, 0, sizeof(*dhcp));
 	bytes = read(fd, dhcp, sizeof(*dhcp));

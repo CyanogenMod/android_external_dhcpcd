@@ -37,7 +37,7 @@
 
 /* Don't set any optional arguments here so we retain POSIX
  * compatibility with getopt */
-#define IF_OPTS "abc:de:f:gh:i:kl:m:no:pqr:s:t:u:v:wxy:z:ABC:DEF:GHI:JKLO:Q:S:TUVW:X:Z:"
+#define IF_OPTS "abc:de:f:gh:i:kl:m:no:pqr:s:t:u:v:wxy:z:ABC:DEF:GHI:JKLO:Q:RS:TUVW:X:Z:"
 
 #define DEFAULT_TIMEOUT		30
 #define DEFAULT_REBOOT		5
@@ -79,6 +79,7 @@
 #define DHCPCD_DUMPLEASE		(1ULL << 30)
 #define DHCPCD_IPV6RS			(1ULL << 31)
 #define DHCPCD_IPV6RA_REQRDNSS		(1ULL << 32)
+#define DHCPCD_ARPGW		(1ULL << 33)
 
 extern const struct option cf_options[];
 

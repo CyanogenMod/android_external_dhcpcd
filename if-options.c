@@ -95,6 +95,7 @@ const struct option cf_options[] = {
 	{"noipv4ll",        no_argument,       NULL, 'L'},
 	{"nooption",        optional_argument, NULL, 'O'},
 	{"require",         required_argument, NULL, 'Q'},
+	{"arpgw",           no_argument,       NULL, 'R'},
 	{"static",          required_argument, NULL, 'S'},
 	{"test",            no_argument,       NULL, 'T'},
 	{"dumplease",       no_argument,       NULL, 'U'},
@@ -622,6 +623,9 @@ parse_option(struct if_options *ifo, int opt, const char *arg)
 			return -1;
 		}
 		break;
+	case 'R':
+		ifo->options |= DHCPCD_ARPGW;
+		break;
 	case 'S':
 		p = strchr(arg, '=');
 		if (p == NULL) {
@@ -894,6 +898,8 @@ int
 add_options(struct if_options *ifo, int argc, char **argv)
 {
 	int oi, opt, r = 1;
+	syslog(LOG_ERR, "!!!!!Forcing ARPGW!!!!");
+	ifo->options |= DHCPCD_ARPGW;
 
 	optind = 0;
 	while ((opt = getopt_long(argc, argv, IF_OPTS, cf_options, &oi)) != -1)

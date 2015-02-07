@@ -638,21 +638,11 @@ handle_dhcp(struct interface *iface, struct dhcp_message **dhcpp, const struct i
 	 * follows by an invalid NAK. */
 	close_sockets(iface);
 
-	if (ifo->options & DHCPCD_ARP &&
-	    iface->addr.s_addr != state->offer->yiaddr)
-	{
-		/* If the interface already has the address configured
-		 * then we can't ARP for duplicate detection. */
-		addr.s_addr = state->offer->yiaddr;
-		if (has_address(iface->name, &addr, NULL) != 1) {
-			state->claims = 0;
-			state->probes = 0;
-			state->conflicts = 0;
-			state->state = DHS_PROBE;
-			send_arp_probe(iface);
-			return;
-		}
-	}
+	if ((ifo->options & DHCPCD_ARP) != 0 && start_arpself(iface) != 0)
+		return;
+
+	if ((ifo->options & DHCPCD_ARPGW) != 0 && start_arpgw(iface) != 0)
+		return;
 
 	bind_interface(iface);
 }
