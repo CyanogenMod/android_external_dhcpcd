@@ -834,6 +834,7 @@ configure_interface1(struct interface *iface)
 				ifl = htonl(if_nametoindex(iface->name));
 				memcpy(iface->clientid + 2, &ifl, 4);
 			}
+			memcpy(iface->clientid + 6, duid, len);
 		} else if (len == 0) {
 			len = iface->hwlen + 1;
 			iface->clientid = xmalloc(len + 1);
