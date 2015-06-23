@@ -776,7 +776,7 @@ configure_interface1(struct interface *iface)
 	struct if_state *ifs = iface->state;
 	struct if_options *ifo = ifs->options;
 	uint8_t *duid;
-	size_t len = 0, ifl;
+	size_t len = 0;
 
 	/* Do any platform specific configuration */
 	if_conf(iface);
@@ -824,16 +824,8 @@ configure_interface1(struct interface *iface)
 			iface->clientid = xmalloc(len + 6);
 			iface->clientid[0] = len + 5;
 			iface->clientid[1] = 255; /* RFC 4361 */
-			ifl = strlen(iface->name);
-			if (ifl < 5) {
-				memcpy(iface->clientid + 2, iface->name, ifl);
-				if (ifl < 4)
-					memset(iface->clientid + 2 + ifl,
-					    0, 4 - ifl);
-			} else {
-				ifl = htonl(if_nametoindex(iface->name));
-				memcpy(iface->clientid + 2, &ifl, 4);
-			}
+			memcpy(iface->clientid + 2,
+			    iface->hwaddr + iface->hwlen - 4, 4);
 			memcpy(iface->clientid + 6, duid, len);
 		} else if (len == 0) {
 			len = iface->hwlen + 1;
